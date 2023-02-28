@@ -1,5 +1,5 @@
 const imagesURLS = ["a_m","a_r","a","am_a","am_r","am","b_a","b_am","b_m","b_r","m_am","m","r_v","r","v_a","v_m","v"];
-function px(x) {
+function px(x ) {
     return (innerWidth / 100) * x; 
 }
 function py(y) {
@@ -52,77 +52,91 @@ Pelota.prototype.draw = function() {
 Pelota.prototype.update = function() {
     this.x += this.sx;
     this.y += this.sy;
-
     if(this.x + this.r >= innerWidth)this.sx = this.sx *-1;
     if(this.x-this.r <= 0) this.sx = Math.abs(this.sx);
     if(this.y + this.r >= innerHeight)this.sy = this.sy *-1;
     if(this.y-this.r <= 0) this.sy = Math.abs(this.sy);
-
-    
 }
 
-function Sopa(w,h,s,color,pelota = {}) {
+function Neshan(pelota) {
     this.pelota = pelota;
     this.display = false;
-    this.x = this.pelota.x;
-    this.y = this.pelota.y;
-    this.w = w;
-    this.h = h;
-    this.s = s;
-    this.color = color;
-    this.r = 0;
-    this.p = 0;
+    this.x = -100;
+    this.y = -100;
+    this.r = 2;
+    this.x2 = -100;
+    this.y2 = -100;
+    this.r2 = 2;
+    this.x3 = 0;
+    this.y3 = 0;
 
-    window.addEventListener("mousedown",(e) => {
-        this.display = true;
-    })
-    window.addEventListener("mousemove",(e) => {
-        if(this.display) {
+    window.addEventListener("mousemove",(e)=> {
+        
+        if(this.display)this.move(e.pageX,e.pageY);
 
-            let x = e.pageX - this.pelota.x;
-            let y = e.pageY - this.pelota.y;
-            this.r = (Math.atan2(y,x)*180) / Math.PI;
-            let distancia = Math.sqrt((e.pageX - this.pelota.x)**2 + (e.pageY - this.pelota.y)**2)-this.pelota.r;
-            this.p = distancia < 100 ? distancia : 100;
-        }
     })
     window.addEventListener("mouseup",(e)=> {
-        if(this.display) {
-
-            let distancia = Math.sqrt((e.pageX - this.pelota.x)**2 + (e.pageY - this.pelota.y)**2)-this.pelota.r;
-            if(distancia <= 0) {
-                let sx = (this.pelota.x - e.pageX)/2; 
-                let sy = (this.pelota.y - e.pageY)/2; 
-                this.pelota.sx = sx;
-                this.pelota.sy = sy;
-                console.log(this.x );
-            }
-            this.display = false;
-        }
+        this.up(e.pageX,e.pageY);
     })
+
 }
-Sopa.prototype.draw = function() {
-    if(this.display) {
-        canvas.ctx.save(); 
-        canvas.ctx.translate(this.x, this.y); 
-        canvas.ctx.rotate((this.r-90) * Math.PI /180);
-        canvas.ctx.drawImage(
-            game.images[this.color],
-            110,
-            148,
-            140,
-            580,
-            this.x-512,
-            this.y-(750-this.p),
-            this.w,
-            this.h
-        )
-        canvas.ctx.restore();
+Neshan.prototype.draw = function() {
+    if(this.display && this.x > 0) {
+        canvas.ctx.strokeStyle = "#e11717";
+        canvas.ctx.moveTo(this.pelota.x,this.pelota.y);
+        canvas.ctx.lineTo(this.x,this.y);
+        canvas.ctx.stroke();
+        canvas.ctx.beginPath();
+        canvas.ctx.fillStyle = "#e11717";
+        canvas.ctx.arc(this.x,this.y, px(this.r), 0, 2 * Math.PI);
+        canvas.ctx.fill();
+        canvas.ctx.stroke();
+        canvas.ctx.moveTo(this.pelota.x,this.pelota.y);
+        canvas.ctx.lineTo(this.x2,this.y2);
+        canvas.ctx.lineTo(this.x2+this.x3,this.y2+this.y3);
+        canvas.ctx.stroke();
+        canvas.ctx.beginPath();
+        canvas.ctx.strokeStyle = "#e11717";
+        canvas.ctx.arc(this.x2,this.y2, px(this.r2), 0, 2 * Math.PI);
+        canvas.ctx.stroke();
     }
 }
-Sopa.prototype.update = function() {
-    // this.r += .5;
+Neshan.prototype.move = function(x,y) {
+    
+    this.x = x;
+    this.y = y;
+
+    this.x2 = this.pelota.x + (this.pelota.x - x)*10;
+    this.y2 = this.pelota.y + (this.pelota.y - y)*10;
+
+    if(this.x2 >= innerWidth)this.x2 = innerWidth-px(this.r2*3);
+    if(this.x2 <= 0)this.x2 = px(this.r2);
+    if(this.y2 >= innerHeight)this.y2 = innerHeight-px(this.r2*3);
+    if(this.y2 <= 0)this.y2 = px(this.r2);
+
+    game.pelotas.forEach((p) => {
+        let distancia = Math.sqrt((this.x2-p.x)**2 + (this.y2-p.y)**2);
+        if(distancia < px(p.r)) {
+            this.x3 = (p.x - this.x2)*10;
+            this.y3 = (p.y - this.y2)*10;
+            
+        }
+        if(distancia >= px(p.r*3)) {
+            this.x3 = 0;
+            this.y3 = 0;
+        }
+    })
+
 }
+Neshan.prototype.up = function(px,py) {
+    this.display = false;
+    let sx = (this.pelota.x - px)/10;
+    let sy = (this.pelota.y - py)/10;
+    this.pelota.sx = sx;
+    this.pelota.sy = sy;
+}
+
+
 
 
 function Game(niveles = [],images = [],nivel) {
@@ -130,27 +144,52 @@ function Game(niveles = [],images = [],nivel) {
     this.niveles = niveles;
     this.images = images;
     this.pelotas = [];
-    this.sopa = {};
-}
+    this.neshan = new Neshan(this.pelotas[0]);
+
+    window.addEventListener("mousedown",(e)=> {
+        this.pelotas.forEach((p)=> {
+            let distancia = Math.sqrt((e.pageX-p.x)**2 + (e.pageY-p.y)**2);
+            if(distancia <= p.r) {
+                this.neshan.pelota = p;
+                this.neshan.display = true;
+            }
+        })
+    })
+} 
 Game.prototype.playGame = function() {
     this.pelotas = [];
-    this.sopa = {};
     this.niveles[this.nivel-1].forEach(n => {
         this.pelotas.push(new Pelota(px(n.x),py(n.y),px(n.w),py(n.h),px(2.5),0,0,n.colors))
     });
-    this.sopa = new Sopa(px(5),py(12),1,"v",this.pelotas[0]);
+   
 }
 Game.prototype.draw = function() {
+    this.neshan.draw();
     this.pelotas.forEach(p => {
         p.draw();
     })
-    this.sopa.draw();
+    
 }
 Game.prototype.update = function() {
     this.pelotas.forEach(p => {
         p.update();
     })
-    this.sopa.update();
+
+    for (let index1 = 0; index1 < this.pelotas.length; index1++) {
+        let p1 = this.pelotas[index1];
+        for (let index2 = 0; index2 < this.pelotas.length; index2++) {
+            let p2 = this.pelotas[index2];
+            let distancia = Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2);
+            if(index1 !== index2 && distancia <= p2.r*2) {
+                let sx = (p2.x - p1.x) / 10;
+                let sy = (p2.y - p1.y) / 10;
+                p2.sx = sx;
+                p2.sy = sy;
+            }
+            
+        }
+        
+    }
 }
 
 function anim() {
@@ -185,4 +224,36 @@ function downloadNiveles() {
     http.send();
 }
 downloadNiveles();
+
+let data =  [{id:"sfbksnfñ",name:"sina",edad:22},{id:"shsl541",name:"mani",edad:18}];
+
+function Sina(nombre,edad,id) {
+    this.id = id
+    this.paszamine = document.createElement("div");
+    this.name = document.createElement("h1");
+    this.name.innerHTML = nombre;
+    this.edad = document.createElement("h1");
+    this.edad.innerHTML = edad;
+
+    this.paszamine.addEventListener("click",()=> {
+        alert(this.id);
+    })
+
+}
+Sina.prototype.appendChild = function(apend = document.querySelector("body")) {
+    this.paszamine.appendChild(this.name);
+    this.paszamine.appendChild(this.edad);
+    apend.appendChild(this.paszamine);
+
+}
+
+data.forEach(data => {
+    let newp  = new Sina(data.name,data.edad,data.id);
+    newp.appendChild();
+
+})
+
+
+
+
 
